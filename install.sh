@@ -12,7 +12,7 @@ ADMIN_CHAT_ID_DEFAULT="1879326595"
 HTTP_ADDR_DEFAULT=":8080"
 DB_PATH_DEFAULT="${DATA_DIR}/licensebot.db"
 
-GO_VERSION_DEFAULT="1.22.10"
+GO_VERSION_DEFAULT="1.23.0"
 REPO_URL_DEFAULT=""
 BRANCH_DEFAULT="main"
 
@@ -285,6 +285,10 @@ main() {
 	chown -R ${APP_NAME}:${APP_NAME} "${INSTALL_DIR}"
 
 	go_install_if_needed "${no_go_install}" "${go_version}"
+	# Prefer the installer-managed Go if present.
+	if [[ -x /usr/local/go/bin/go ]]; then
+		export PATH="/usr/local/go/bin:${PATH}"
+	fi
 
 	local src_dir
 	src_dir="$(resolve_source_dir "${repo_url}" "${branch}")"
