@@ -88,7 +88,30 @@ go_install_if_needed() {
 	local no_install="$1"
 	local go_version="$2"
 
+	local need_install=0
 	if have_cmd go; then
+		local current
+		current="$(go env GOVERSION 2>/dev/null || true)"
+		# current like: go1.21.6
+		if [[ "${current}" =~ ^go([0-9]+)\.([0-9]+) ]]; then
+			local cur_major="${BASH_REMATCH[1]}"
+			local cur_minor="${BASH_REMATCH[2]}"
+			local req_major req_minor
+			req_major="${go_version%%.*}"
+			req_minor="${go_version#*.}"
+			req_minor="${req_minor%%.*}"
+			if (( cur_major < req_major )) || (( cur_major == req_major && cur_minor < req_minor )); then
+				need_install=1
+			fi
+		else
+			# Unknown format; install known Go.
+			need_install=1
+		fi
+	else
+		need_install=1
+	fi
+
+	if [[ "${need_install}" -eq 0 ]]; then
 		return
 	fi
 	if [[ "${no_install}" == "1" ]]; then
@@ -115,6 +138,8 @@ go_install_if_needed() {
 
 	# Make available for this script execution.
 	export PATH="/usr/local/go/bin:${PATH}"
+	# Prevent go from attempting to auto-download a newer toolchain.
+	export GOTOOLCHAIN=local
 
 	# Persist PATH for shells (best-effort).
 	if [[ -f /etc/profile ]]; then
@@ -270,6 +295,8 @@ main() {
 	else
 		export PATH="/usr/local/go/bin:${PATH}"
 	fi
+	# Never auto-download toolchains during install.
+	export GOTOOLCHAIN=local
 	cd "${src_dir}"
 	go build -o "${BIN_PATH}" ./cmd/licensebot
 	chown ${APP_NAME}:${APP_NAME} "${BIN_PATH}"
